@@ -5,7 +5,6 @@ module.exports = Player.extend({
   __name__: 'AIPlayer',
   turnStart: function(player, game) {
     if (player != this) return;
-    console.log('turnStart', this.toString());
     if (this.hand.length < 1) {
       this.trigger(game.EVENTS.GAME_FINISH, player);
       return;
@@ -13,7 +12,7 @@ module.exports = Player.extend({
     var card = null, pile = null;
     for (var handN = 0; handN < this.hand.length && !pile; handN++) {
       card = this.hand.at(handN);
-      var piles = game.couldPlayOn(card);
+      var piles = game.couldPlayOn(card, player);
       if (piles.length > 0) pile = piles[0];
     }
     if (pile && card) {

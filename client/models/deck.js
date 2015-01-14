@@ -10,7 +10,6 @@ module.exports = AmpersandCollection.extend({
     return this.__name__ + '[' + this.length + ':' + this.map(function(c) { return c.toString(); }).join(', ') + ']';
   },
   draw: function() {
-    //console.log(this.__name__, 'draw');
     var item = this.peek();
     if (item) this.remove(item);
     return item;

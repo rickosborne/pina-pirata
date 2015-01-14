@@ -5,6 +5,9 @@ var _ = require('underscore');
 module.exports = Deck.extend({
   __name__: 'CardDeck',
   model: Card,
+  props: {
+    setIndex: ['number', false, null]
+  },
   initialize: function() {
     var cards = [];
     _(Card.prototype.FACES).each(function(face1) {

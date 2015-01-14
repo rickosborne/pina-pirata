@@ -11,13 +11,19 @@ var EVENTS = {
   GAME_START:  'game:start',
   GAME_FINISH: 'game:finish',
   GAME_ABORT: 'game:abort',
-  GAME_PLAYER_ADD: 'game:player:add',
-  GAME_PLAYER_DROP: 'game:player:drop',
-  GAME_PLAY_REVERSE: 'game:play:reverse',
+  PLAYER_ADD: 'player:add',
+  PLAYER_DROP: 'player:drop',
+  PLAY_REVERSE: 'play:reverse',
+  PLAY_CARD: 'play:card',
   DECK_SHUFFLE: 'deck:shuffle',
+  DECK_REPLENISH: 'deck:replenish',
   DECK_DRAW: 'deck:draw',
   DECK_ADD: 'deck:add',
-  DECK_EMPTY: 'deck:empty'
+  DECK_EMPTY: 'deck:empty',
+  DECK_REVEALED: 'deck:revealed',
+  DECK_HIDDEN: 'deck:hidden',
+  ADVENTURE_ADD: 'adventure:add',
+  ADVENTURE_APPLIES: 'adventure:applies'
 };
 
 var Game = module.exports = AmpersandState.extend({
@@ -26,7 +32,8 @@ var Game = module.exports = AmpersandState.extend({
     round: ['number', false, -1],
     currentPlayerNum: ['number', false, -1],
     adventureCount: ['number', false, 2],
-    playDirection: ['number', false, 1]
+    playDirection: ['number', false, 1],
+    deckRevealed: ['number', false, 0]
   },
   collections: {
     players: AmpersandCollection.extend({
@@ -104,7 +111,7 @@ var Game = module.exports = AmpersandState.extend({
   addPlayer: function(player) {
     this.players.add(player);
     player.addedToGame(this);
-    this.trigger(EVENTS.GAME_PLAYER_ADD, player, this);
+    this.trigger(EVENTS.PLAYER_ADD, player, this);
   },
   setup: function() {
     // initial deal
@@ -116,14 +123,17 @@ var Game = module.exports = AmpersandState.extend({
     // pile(s)
     this.piles.reset();
     for(var pileN = 1; pileN <= this.pileCount; pileN++) {
-      this.piles.add(new CardDeck([this.mainDeck.draw()]));
+      var pile = new CardDeck([this.mainDeck.draw()]);
+      pile.setIndex = pileN;
+      this.piles.add(pile);
     }
     // adventures
     this.adventures.reset();
-    for(var adventureN = 1; adventureN <= this.adventureCount && adventureN <= this.adventureDeck.length; adventureN++) {
-      var adventure = this.adventureDeck.draw(Adventure);
+    for(var adventureN = 1; (adventureN <= this.adventureCount) && (this.adventureDeck.length > 0); adventureN++) {
+      var adventure = this.adventureDeck.draw();
       this.adventures.add(adventure.attributes); // wtf is this hackery?
-      adventure.addToGame(this);
+      this.trigger(EVENTS.ADVENTURE_ADD, adventure, this);
+      if (adventure.addToGame) adventure.addToGame(this);
     }
   },
   startTurn: function() {
@@ -131,20 +141,17 @@ var Game = module.exports = AmpersandState.extend({
     this.trigger(EVENTS.TURN_START, this.currentPlayer, this);
   },
   finishTurn: function() {
-    console.log('finishTurn', this.currentPlayer.name);
     this.currentPlayer.off(EVENTS.TURN_FINISH);
     this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
     this.currentPlayerNum = this.nextPlayerNum;
     this.startTurn();
   },
   finishGame: function() {
-    console.log('finishGame', this.currentPlayer.name);
     this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
-    this.trigger(EVENTS.GAME_FINISH);
+    this.trigger(EVENTS.GAME_FINISH, this.currentPlayer);
     this.cleanUp();
   },
   abortGame: function() {
-    console.log('abortGame');
     this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
     this.trigger(EVENTS.GAME_ABORT);
     this.cleanUp();
@@ -155,7 +162,6 @@ var Game = module.exports = AmpersandState.extend({
     });
   },
   startGame: function() {
-    console.log(this.__name__, 'startGame');
     this.currentPlayerNum = 0;
     this.players.each(function(player) {
       player.on(EVENTS.GAME_FINISH, this.finishGame, this);
@@ -170,20 +176,20 @@ var Game = module.exports = AmpersandState.extend({
     }, this);
     return result;
   },
-  couldPlayOn: function(card) {
+  couldPlayOn: function(card, player) {
     var isWild = this.isWild(card);
     var faces = card.faceTypes;
     return this.piles.filter(function(pile) {
       if (isWild) return true;
       var topCard = pile.top();
       this.adventures.each(function(adventure) {
-        if (adventure.masqueradeAction) topCard = adventure.masqueradeAction(topCard) || topCard;
+        if (adventure.masqueradeAction) topCard = adventure.masqueradeAction(topCard, player, this) || topCard;
       }, this);
       for (var faceN = 0; faceN < faces.length; faceN++) {
         if (topCard.hasType(faces[faceN])) {
           var couldPlay = true;
           this.adventures.each(function(adventure) {
-            if (adventure.blockPlay && adventure.blockPlay(card, pile, this)) couldPlay = false;
+            if (adventure.blockPlay && adventure.blockPlay(card, topCard, pile, this)) couldPlay = false;
           }, this);
           if (couldPlay) return true;
         }
@@ -192,47 +198,57 @@ var Game = module.exports = AmpersandState.extend({
     }, this);
   },
   playCard: function(card, pile, player) {
-    console.log('playCard', player.name, card.toString(), pile.top().toString());
+    var previousTop = pile.top();
     pile.add(card);
+    this.trigger(EVENTS.PLAY_CARD, card, previousTop, pile, player, this);
     this.adventures.each(function(adventure) {
-      if (adventure.playCard) adventure.playCard(card, pile, player, this);
+      if (adventure.playCard) adventure.playCard(card, previousTop, pile, player, this);
     }, this);
-    //console.log(pile.toString());
   },
   shuffleMainDeck: function() {
     this.mainDeck.shuffle();
     this.trigger(EVENTS.DECK_SHUFFLE);
   },
+  replenishMainDeck: function() {
+    this.piles.each(function(pile) {
+      var topCard = pile.take();
+      this.mainDeck.add(pile.models);
+      pile.reset([topCard]);
+    }, this);
+    this.shuffleMainDeck();
+    this.trigger(EVENTS.DECK_REPLENISH, this);
+  },
   drawCard: function(player) {
     var card = this.mainDeck.draw();
     if (!card) { // replenish decks
-      console.log('replenishing');
-      this.piles.each(function(pile) {
-        var topCard = pile.take();
-        this.mainDeck.add(pile.models);
-        pile.reset([topCard]);
-      }, this);
-      console.log(this.piles.toString());
-      this.shuffleMainDeck();
+      this.replenishMainDeck();
       card = this.mainDeck.draw();
     }
     if (!card) { // no more cards!
       this.abortGame();
       return null;
     }
-    console.log('drawCard', player.name, card.toString());
-    this.trigger(EVENTS.DECK_DRAW);
+    this.trigger(EVENTS.DECK_DRAW, card, player);
     return card;
   },
   reversePlayOrder: function() {
-    var was = this.nextPlayer.name;
     this.playDirection = -this.playDirection;
-    console.log('reversePlayDirection was:', was, 'now:', this.nextPlayer.name);
-    this.trigger(EVENTS.GAME_PLAY_REVERSE);
+    this.trigger(EVENTS.PLAY_REVERSE, this.playDirection, this.nextPlayer);
   },
-  addCardToMainDeck: function(card) {
+  addCardToMainDeck: function(card, player) {
     this.mainDeck.addBottom(card);
-    this.trigger(EVENTS.DECK_ADD);
+    this.trigger(EVENTS.DECK_ADD, card, player);
+  },
+  adventureApplies: function(adventure, player, card) {
+    this.trigger(EVENTS.ADVENTURE_APPLIES, adventure, player, card);
+  },
+  revealMainDeck: function() {
+    if (!this.deckRevealed) this.trigger(EVENTS.DECK_REVEALED, this);
+    this.deckRevealed++;
+  },
+  hideMainDeck: function() {
+    this.deckRevealed--;
+    if (!this.deckRevealed) this.trigger(EVENTS.DECK_HIDDEN, this);
   }
 });
 

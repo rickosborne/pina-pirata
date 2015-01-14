@@ -21,7 +21,5 @@ module.exports = AmpersandState.extend({
   toString: function() {
     return this.__name__ + '{"' + this.name + '":' + this.hand.toString() + '}';
   },
-  turnStart: function(player) {
-    console.log(this.__name__ + '{' + this.name + '}', 'turnStart');
-  } // TBD
+  turnStart: function(player) {} // TBD
 });
