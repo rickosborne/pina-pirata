@@ -14,7 +14,7 @@ var EVENTS = {
   PLAYER_ADD: 'player:add',
   PLAYER_DROP: 'player:drop',
   PLAY_REVERSE: 'play:reverse',
-  PLAY_CARD: 'play:card',
+  CARD_PLAY: 'card:play',
   CARD_DISCARD: 'card:discard',
   CARD_TRANSFER: 'card:transfer',
   CARD_REVEAL: 'card:reveal',
@@ -215,7 +215,7 @@ var Game = module.exports = AmpersandState.extend({
     var previousTop = pile.top();
     pile.add(card);
     var masqCard = this.masqueradeCard(card);
-    this.trigger(EVENTS.PLAY_CARD, card, previousTop, pile, player, this);
+    this.trigger(EVENTS.CARD_PLAY, card, previousTop, pile, player, this);
     this.adventures.each(function(adventure) {
       if (adventure.playCard) adventure.playCard(card, masqCard, previousTop, pile, player, this);
     }, this);

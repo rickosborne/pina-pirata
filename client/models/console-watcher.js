@@ -29,7 +29,7 @@ module.exports = Watcher.extend({
     onPlayReverse: function (playDirection, nextPlayer) {
         print("The play direction reverses!", nextPlayer.name, "is next.");
     },
-    onPlayCard: function(card, previousTop, pile, player) {
+    onCardPlay: function(card, previousTop, pile, player) {
         var onto = previousTop ? previousTop.toString() : 'empty space';
         print(player.name, "plays", card.toString(), "onto pile", pile.setIndex + "'s", onto);
     },
