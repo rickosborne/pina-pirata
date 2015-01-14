@@ -59,5 +59,14 @@ module.exports = Watcher.extend({
     },
     onDeckHidden: function() {
         print("The top card of the draw pile is now face-down.");
+    },
+    onCardDiscard: function(card, player) {
+        print(player.name, "puts the", card.toString(), "in the discard pile.");
+    },
+    onCardTransfer: function(card, toPlayer, fromPlayer) {
+        print(fromPlayer.name, "gives", card.toString(), "to", toPlayer.name);
+    },
+    onCardReveal: function(card, player) {
+        print(player.name, "reveals", card.toString(), "to all players.");
     }
 });

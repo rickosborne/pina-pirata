@@ -26,5 +26,8 @@ module.exports = Player.extend({
     }
     if (this.hand.length > 0) this.trigger(game.EVENTS.TURN_FINISH, player);
     else this.trigger(game.EVENTS.GAME_FINISH, player);
+  },
+  selectDiscard: function(game) {
+    return this.hand.drawRandom();
   }
 });

@@ -15,6 +15,9 @@ var EVENTS = {
   PLAYER_DROP: 'player:drop',
   PLAY_REVERSE: 'play:reverse',
   PLAY_CARD: 'play:card',
+  CARD_DISCARD: 'card:discard',
+  CARD_TRANSFER: 'card:transfer',
+  CARD_REVEAL: 'card:reveal',
   DECK_SHUFFLE: 'deck:shuffle',
   DECK_REPLENISH: 'deck:replenish',
   DECK_DRAW: 'deck:draw',
@@ -50,6 +53,7 @@ var Game = module.exports = AmpersandState.extend({
     }),
     mainDeck: CardDeck,
     adventureDeck: AdventureDeck,
+    discardPile: CardDeck,
     piles: AmpersandCollection.extend({
       __name__: 'Piles',
       model: CardDeck,
@@ -114,6 +118,7 @@ var Game = module.exports = AmpersandState.extend({
     this.trigger(EVENTS.PLAYER_ADD, player, this);
   },
   setup: function() {
+    this.mainDeck.buildBasicDeck();
     // initial deal
     for(var i = 0; i < this.startingHandSize; i++) {
       this.players.each(function(player) {
@@ -225,6 +230,10 @@ var Game = module.exports = AmpersandState.extend({
       this.mainDeck.add(pile.models);
       pile.reset([topCard]);
     }, this);
+    if (this.discardPile.length > 0) {
+      this.mainDeck.add(this.discardPile.models);
+      this.discardPile.reset([]);
+    }
     this.shuffleMainDeck();
     this.trigger(EVENTS.DECK_REPLENISH, this);
   },
@@ -259,6 +268,17 @@ var Game = module.exports = AmpersandState.extend({
   hideMainDeck: function() {
     this.deckRevealed--;
     if (!this.deckRevealed) this.trigger(EVENTS.DECK_HIDDEN, this);
+  },
+  discard: function(card, player) {
+    this.discardPile.add(card);
+    this.trigger(EVENTS.CARD_DISCARD, card, player);
+  },
+  transferCard: function(card, toPlayer, fromPlayer) {
+    toPlayer.addToHand(card);
+    this.trigger(EVENTS.CARD_TRANSFER, card, toPlayer, fromPlayer);
+  },
+  revealCard: function(card, player) {
+    this.trigger(EVENTS.CARD_REVEAL, card, player);
   }
 });
 

@@ -9,6 +9,9 @@ module.exports = Deck.extend({
     setIndex: ['number', false, null]
   },
   initialize: function() {
+    this.reset([]);
+  },
+  buildBasicDeck: function() {
     var cards = [];
     _(Card.prototype.FACES).each(function(face1) {
       _(Card.prototype.FACES).each(function(face2) {

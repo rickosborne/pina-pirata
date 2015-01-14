@@ -44,7 +44,7 @@ registerAdventure({
   face: FACES.PARROT,
   playCard: function(card, masqCard, previousTop, pile, player, game) {
     if (masqCard.hasType(FACES.PARROT) && (player.hand.length > 0)) {
-      var returnCard = player.hand.drawRandom();
+      var returnCard = player.selectDiscard(game);
       game.adventureApplies(this, player, card);
       game.addCardToMainDeck(returnCard, player);
     }
@@ -106,26 +106,94 @@ registerAdventure({
   }
 });
 
-//registerAdventure({
-//  name: 'Moonlight',
-//  desc: 'While you have only one card left in your Hand, play with your card revealed on the table.'
-//});
+registerAdventure({
+  name: 'Moonlight',
+  desc: 'While you have only one card left in your Hand, play with your card revealed on the table.',
+  addToGame: function(game) {
+    var adventure = this;
+    var checkHand = function(card, hand) {
+      var player = hand.parent;
+      if (hand.length === 1) {
+        game.adventureApplies(adventure, player, hand.peek());
+        game.revealCard(hand.peek(), player);
+      }
+    };
+    game.players.each(function(player) {
+      player.hand.on('add remove', checkHand, adventure);
+    }, this);
+    game.players.on('add', function(player) {
+      player.hand.on('add remove', checkHand, adventure);
+    }, this);
+    game.players.on('remove', function(player) {
+      player.hand.off(null, null, this);
+    }, this);
+  },
+  removeFromGame: function(game) {
+    game.players.each(function(player) {
+      player.hand.off(null, null, this);
+    }, this);
+    game.players.off(null, null, this);
+  }
+});
 
-//registerAdventure({
-//  name: 'Despair',
-//  desc: 'All your pirates are Wildcards as long as you have at least 8 cards in Hand.'
-//});
+registerAdventure({
+  name: 'Despair',
+  desc: 'All your pirates are Wildcards as long as you have at least 8 cards in Hand.',
+  isWild: function(card, player, game) {
+    return player.hand.length >= 8;
+  },
+  playCard: function(card, masqCard, previousTop, pile, player, game) {
+    if (!(card.type & previousTop.type) && (player.hand.length >= 7)) {
+      game.adventureApplies(this, player, card);
+    }
+  }
+});
 
-//registerAdventure({
-//  name: 'Favorable Current',
-//  desc: 'You may discard a card at any time you have exactly 5 cards in Hand.'
-//});
+registerAdventure({
+  name: 'Favorable Current',
+  desc: 'You may discard a card at any time you have exactly 5 cards in Hand.',
+  addToGame: function(game) {
+    var adventure = this;
+    var checkHand = function(card, hand) {
+      var player = hand.parent;
+      if (hand.length === 5) {
+        game.adventureApplies(adventure, player, null);
+        var discard = player.selectDiscard(game);
+        if (discard) game.discard(discard, player);
+      }
+    };
+    game.players.each(function(player) {
+      player.hand.on('add remove', checkHand, adventure);
+    }, this);
+    game.players.on('add', function(player) {
+      player.hand.on('add remove', checkHand, adventure);
+    }, this);
+    game.players.on('remove', function(player) {
+      player.hand.off(null, null, this);
+    }, this);
+  },
+  removeFromGame: function(game) {
+    game.players.each(function(player) {
+      player.hand.off(null, null, this);
+    }, this);
+    game.players.off(null, null, this);
+  }
+});
 
-//registerAdventure({
-//  name: 'Sabotage',
-//  desc: 'Whenever you play a Monkey, give the player to your left a card from your Hand.',
-//  face: FACES.MANDRILL
-//});
+registerAdventure({
+  name: 'Sabotage',
+  desc: 'Whenever you play a Monkey, give the player to your left a card from your Hand.',
+  face: FACES.MANDRILL,
+  playCard: function(card, masqCard, previousTop, pile, player, game) {
+    if (masqCard.hasType(FACES.MANDRILL)) {
+      var discard = player.selectDiscard();
+      if (discard) {
+        game.adventureApplies(this, player, discard);
+        game.transferCard(discard, game.leftPlayer, player);
+      }
+    }
+  }
+});
 
 //registerAdventure({
 //  name: 'Turtleball',
