@@ -51,3 +51,4 @@ var Card = module.exports = AmpersandState.extend({
 });
 
 Card.prototype.FACES = FACES;
+Card.prototype.WILD = _(FACES).reduce(function(acc, val) { return acc + val; }, 0);

@@ -21,7 +21,9 @@ module.exports = Player.extend({
       game.playCard(card, pile, player);
     }
     else {
-      this.addToHand(game.drawCard(player));
+      card = game.drawCard(player);
+      if (card) this.addToHand(card);
+      else return;
     }
     if (this.hand.length > 0) this.trigger(game.EVENTS.TURN_FINISH, player);
     else this.trigger(game.EVENTS.GAME_FINISH, player);

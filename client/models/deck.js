@@ -25,5 +25,11 @@ module.exports = AmpersandCollection.extend({
     var item = this.top();
     if (item) this.remove(item);
     return item;
+  },
+  drawRandom: function() {
+    return (this.length < 1) ? null : this.remove(this.at(Math.floor(Math.random() * this.length)));
+  },
+  addBottom: function(item) {
+    this.add(item, {at: 0})
   }
 });

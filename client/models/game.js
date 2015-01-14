@@ -10,8 +10,14 @@ var EVENTS = {
   TURN_START:  'turn:start',
   GAME_START:  'game:start',
   GAME_FINISH: 'game:finish',
+  GAME_ABORT: 'game:abort',
   GAME_PLAYER_ADD: 'game:player:add',
-  GAME_PLAYER_DROP: 'game:player:drop'
+  GAME_PLAYER_DROP: 'game:player:drop',
+  GAME_PLAY_REVERSE: 'game:play:reverse',
+  DECK_SHUFFLE: 'deck:shuffle',
+  DECK_DRAW: 'deck:draw',
+  DECK_ADD: 'deck:add',
+  DECK_EMPTY: 'deck:empty'
 };
 
 var Game = module.exports = AmpersandState.extend({
@@ -65,31 +71,31 @@ var Game = module.exports = AmpersandState.extend({
       }
     },
     currentPlayer: {
-      deps: ['currentPlayerNum'],
+      deps: ['currentPlayerNum', 'players'],
       fn: function() {
         return this.players.at(this.currentPlayerNum);
       }
     },
     nextPlayer: {
-      deps: ['nextPlayerNum'],
+      deps: ['nextPlayerNum', 'players'],
       fn: function() {
         return this.players.at(this.nextPlayerNum)
       }
     },
     nextPlayerNum: {
-      deps: ['currentPlayerNum'],
+      deps: ['currentPlayerNum', 'playDirection', 'players'],
       fn: function() {
         return (this.currentPlayerNum + this.playDirection + this.players.length) % this.players.length;
       }
     },
     leftPlayerNum: {
-      deps: ['currentPlayerNum'],
+      deps: ['currentPlayerNum', 'players'],
       fn: function() {
         return (this.currentPlayerNum + 1 + this.players.length) % this.players.length;
       }
     },
     leftPlayer: {
-      deps: ['leftPlayerNum'],
+      deps: ['leftPlayerNum', 'players'],
       fn: function() {
         return this.players.at(this.leftPlayerNum);
       }
@@ -114,7 +120,7 @@ var Game = module.exports = AmpersandState.extend({
     }
     // adventures
     this.adventures.reset();
-    for(var adventureN = 1; adventureN <= this.adventureCount; adventureN++) {
+    for(var adventureN = 1; adventureN <= this.adventureCount && adventureN <= this.adventureDeck.length; adventureN++) {
       var adventure = this.adventureDeck.draw(Adventure);
       this.adventures.add(adventure.attributes); // wtf is this hackery?
       adventure.addToGame(this);
@@ -134,10 +140,19 @@ var Game = module.exports = AmpersandState.extend({
   finishGame: function() {
     console.log('finishGame', this.currentPlayer.name);
     this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
+    this.trigger(EVENTS.GAME_FINISH);
+    this.cleanUp();
+  },
+  abortGame: function() {
+    console.log('abortGame');
+    this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
+    this.trigger(EVENTS.GAME_ABORT);
+    this.cleanUp();
+  },
+  cleanUp: function() {
     this.players.each(function(player) {
       player.off(null, null, this);
     });
-    this.trigger(EVENTS.GAME_FINISH);
   },
   startGame: function() {
     console.log(this.__name__, 'startGame');
@@ -161,7 +176,9 @@ var Game = module.exports = AmpersandState.extend({
     return this.piles.filter(function(pile) {
       if (isWild) return true;
       var topCard = pile.top();
-      if (!topCard) return false;
+      this.adventures.each(function(adventure) {
+        if (adventure.masqueradeAction) topCard = adventure.masqueradeAction(topCard) || topCard;
+      }, this);
       for (var faceN = 0; faceN < faces.length; faceN++) {
         if (topCard.hasType(faces[faceN])) {
           var couldPlay = true;
@@ -182,6 +199,10 @@ var Game = module.exports = AmpersandState.extend({
     }, this);
     //console.log(pile.toString());
   },
+  shuffleMainDeck: function() {
+    this.mainDeck.shuffle();
+    this.trigger(EVENTS.DECK_SHUFFLE);
+  },
   drawCard: function(player) {
     var card = this.mainDeck.draw();
     if (!card) { // replenish decks
@@ -192,11 +213,26 @@ var Game = module.exports = AmpersandState.extend({
         pile.reset([topCard]);
       }, this);
       console.log(this.piles.toString());
-      this.mainDeck.shuffle();
+      this.shuffleMainDeck();
       card = this.mainDeck.draw();
     }
+    if (!card) { // no more cards!
+      this.abortGame();
+      return null;
+    }
     console.log('drawCard', player.name, card.toString());
+    this.trigger(EVENTS.DECK_DRAW);
     return card;
+  },
+  reversePlayOrder: function() {
+    var was = this.nextPlayer.name;
+    this.playDirection = -this.playDirection;
+    console.log('reversePlayDirection was:', was, 'now:', this.nextPlayer.name);
+    this.trigger(EVENTS.GAME_PLAY_REVERSE);
+  },
+  addCardToMainDeck: function(card) {
+    this.mainDeck.addBottom(card);
+    this.trigger(EVENTS.DECK_ADD);
   }
 });
 

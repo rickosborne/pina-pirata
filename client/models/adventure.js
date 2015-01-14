@@ -1,4 +1,5 @@
 var AmpersandState = require('ampersand-state');
+var Card = require('./card');
 
 var ADVENTURES = [];
 
@@ -8,7 +9,8 @@ module.exports = AmpersandState.extend({
     name: 'string',
     playCard: ['function', false],
     isWild: ['function', false],
-    blockPlay: ['function', false]
+    blockPlay: ['function', false],
+    masqueradeAction: ['function', false]
   },
   addToGame: function(game) {
     this.game = game;
@@ -27,16 +29,26 @@ var registerAdventure = function(adventure) {
   ADVENTURES.push(adventure);
 };
 
-//registerAdventure({
-//  name: 'Follow the Penguin',
-//  desc: 'Whenever you play a Penguin, the play order switches directions.'
-//});
-//
-//registerAdventure({
-//  name: 'Man Overboard',
-//  desc: 'Whenever you play a Parrot, put a card from your Hand on top of the draw pile.'
-//});
-//
+registerAdventure({
+  name: 'Follow the Penguin',
+  desc: 'Whenever you play a Penguin, the play order switches directions.',
+  playCard: function(card, pile, player, game) {
+    if (card.hasType(card.FACES.PENGUIN)) game.reversePlayOrder();
+  }
+});
+
+registerAdventure({
+  name: 'Man Overboard',
+  desc: 'Whenever you play a Parrot, put a card from your Hand on top of the draw pile.',
+  playCard: function(card, pile, player, game) {
+    if (card.hasType(card.FACES.PARROT) && (player.hand.length > 0)) {
+      var card = player.hand.drawRandom();
+      console.log(this.toString(), player.name, card.toString(), player.hand.toString());
+      game.addCardToMainDeck(card);
+    }
+  }
+});
+
 registerAdventure({
   name: 'No Other Walrus',
   desc: 'You cannot play a Walrus on a Walrus. The solitary walrus is every pirate type (he can be played on any other pirate, and triggers all Adventure tiles that are triggered when particular pirates are played).',
@@ -45,7 +57,15 @@ registerAdventure({
     return card.hasType(card.FACES.WALRUS) && topCard && topCard.hasType(card.FACES.WALRUS);
   },
   isWild: function(card, game) {
-    return card.type == card.FACES.WALRUS;
+    return card.type === card.FACES.WALRUS;
+  },
+  masqueradeAction: function(card) {
+    if (card.type === card.FACES.WALRUS) {
+      // any card can be played on the solitary walrus
+      console.log('masqueradeAction', this.toString());
+      return new Card({type: card.WILD});
+    }
+    return card;
   }
 });
 
