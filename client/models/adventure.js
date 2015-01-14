@@ -42,9 +42,9 @@ registerAdventure({
   desc: 'Whenever you play a Parrot, put a card from your Hand on top of the draw pile.',
   playCard: function(card, pile, player, game) {
     if (card.hasType(card.FACES.PARROT) && (player.hand.length > 0)) {
-      var card = player.hand.drawRandom();
-      console.log(this.toString(), player.name, card.toString(), player.hand.toString());
-      game.addCardToMainDeck(card);
+      var returnCard = player.hand.drawRandom();
+      console.log(this.toString(), player.name, returnCard.toString(), player.hand.toString());
+      game.addCardToMainDeck(returnCard);
     }
   }
 });

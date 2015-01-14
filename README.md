@@ -34,7 +34,7 @@ It should be as simple as cloning the repo then:
 
 ```
 npm install
-npm client/app
+node client/app
 ```
 
 You should get a console full of the AI playing the game.
