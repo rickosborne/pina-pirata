@@ -18,6 +18,7 @@ var EVENTS = {
   CARD_DISCARD: 'card:discard',
   CARD_TRANSFER: 'card:transfer',
   CARD_REVEAL: 'card:reveal',
+  CARD_TAKEBACK: 'card:takeback',
   DECK_SHUFFLE: 'deck:shuffle',
   DECK_REPLENISH: 'deck:replenish',
   DECK_DRAW: 'deck:draw',
@@ -109,6 +110,18 @@ var Game = module.exports = AmpersandState.extend({
       deps: ['leftPlayerNum', 'players'],
       fn: function() {
         return this.players.at(this.leftPlayerNum);
+      }
+    },
+    rightPlayerNum: {
+      deps: ['currentPlayerNum', 'players'],
+      fn: function() {
+        return (this.currentPlayerNum - 1 + this.players.length) % this.players.length;
+      }
+    },
+    rightPlayer: {
+      deps: ['rightPlayerNum', 'players'],
+      fn: function() {
+        return this.players.at(this.rightPlayerNum);
       }
     }
   },
@@ -279,6 +292,11 @@ var Game = module.exports = AmpersandState.extend({
   },
   revealCard: function(card, player) {
     this.trigger(EVENTS.CARD_REVEAL, card, player);
+  },
+  takeBackCard: function(card, pile, player) {
+    pile.remove(card);
+    player.addToHand(card);
+    this.trigger(EVENTS.CARD_TAKEBACK, card, pile, player);
   }
 });
 

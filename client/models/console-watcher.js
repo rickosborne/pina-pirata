@@ -68,5 +68,8 @@ module.exports = Watcher.extend({
     },
     onCardReveal: function(card, player) {
         print(player.name, "reveals", card.toString(), "to all players.");
+    },
+    onCardTakeback: function(card, pile, player) {
+        print(player.name, "takes", card.toString(), "back from pile", pile.setIndex, "and now has", player.hand.length, "in hand.");
     }
 });

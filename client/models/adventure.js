@@ -195,11 +195,17 @@ registerAdventure({
   }
 });
 
-//registerAdventure({
-//  name: 'Turtleball',
-//  desc: 'Whenever you play a Penguin on a Turtle, the player to your right takes that Turtle into his Hand.',
-//  face: FACES.PENGUIN
-//});
+registerAdventure({
+  name: 'Turtleball',
+  desc: 'Whenever you play a Penguin on a Turtle, the player to your right takes that Turtle into his Hand.',
+  face: FACES.PENGUIN,
+  playCard: function(card, masqCard, previousTop, pile, player, game) {
+    if (previousTop && card && masqCard && previousTop.hasType(FACES.TURTLE) && masqCard.hasType(FACES.PENGUIN)) {
+      game.adventureApplies(this, player, card);
+      game.takeBackCard(previousTop, pile, game.rightPlayer);
+    }
+  }
+});
 
 //registerAdventure({
 //  name: 'Labyrinth',
