@@ -169,15 +169,15 @@ var Game = module.exports = AmpersandState.extend({
     this.trigger(EVENTS.GAME_START);
     this.startTurn();
   },
-  isWild: function(card) {
+  isWild: function(card, player) {
     var result = false;
     this.adventures.each(function(adventure) {
-      if (adventure.isWild) result = result || adventure.isWild(card, this);
+      if (adventure.isWild) result = result || adventure.isWild(card, player, this);
     }, this);
     return result;
   },
   couldPlayOn: function(card, player) {
-    var isWild = this.isWild(card);
+    var isWild = this.isWild(card, player);
     var faces = card.faceTypes;
     return this.piles.filter(function(pile) {
       if (isWild) return true;
@@ -197,12 +197,22 @@ var Game = module.exports = AmpersandState.extend({
       return false;
     }, this);
   },
+  masqueradeCard: function(card, player) {
+    this.adventures.each(function(adventure) {
+      if (adventure.masqueradeAction) card = adventure.masqueradeAction(card, player, this) || card;
+    }, this);
+    return card;
+  },
+  peekMainDeck: function(player) {
+    return this.masqueradeCard(this.mainDeck.peek(), player);
+  },
   playCard: function(card, pile, player) {
     var previousTop = pile.top();
     pile.add(card);
+    var masqCard = this.masqueradeCard(card);
     this.trigger(EVENTS.PLAY_CARD, card, previousTop, pile, player, this);
     this.adventures.each(function(adventure) {
-      if (adventure.playCard) adventure.playCard(card, previousTop, pile, player, this);
+      if (adventure.playCard) adventure.playCard(card, masqCard, previousTop, pile, player, this);
     }, this);
   },
   shuffleMainDeck: function() {
