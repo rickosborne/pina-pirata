@@ -1,14 +1,22 @@
 var AmpersandState = require('ampersand-state');
 var Card = require('./card');
+var Q = require('q');
 
 var ADVENTURES = [];
 var FACES = Card.prototype.FACES;
 var WILD = Card.prototype.WILD;
 
+var emptyPromise = (function() {
+  var deferred = Q.defer();
+  deferred.resolve();
+  return deferred.promise;
+})();
+
 module.exports = AmpersandState.extend({
   __name__: 'Adventure',
   props: {
     name: 'string',
+    desc: 'string',
     face: ['number', false],
     playCard: ['function', false],
     isWild: ['function', false],
@@ -35,6 +43,7 @@ registerAdventure({
       game.adventureApplies(this, player, card);
       game.reversePlayOrder();
     }
+    return emptyPromise;
   }
 });
 
@@ -44,10 +53,15 @@ registerAdventure({
   face: FACES.PARROT,
   playCard: function(card, masqCard, previousTop, pile, player, game) {
     if (masqCard.hasType(FACES.PARROT) && (player.hand.length > 0)) {
-      var returnCard = player.selectDiscard(game);
+      var discardPromise = Q.defer();
       game.adventureApplies(this, player, card);
-      game.addCardToMainDeck(returnCard, player);
+      player.selectDiscard(game).then(function(returnCard) {
+        if (returnCard) game.addCardToMainDeck(returnCard, player);
+        discardPromise.resolve();
+      }.bind(this));
+      return discardPromise.promise;
     }
+    return emptyPromise;
   }
 });
 
@@ -69,6 +83,7 @@ registerAdventure({
     if ((previousTop.type === FACES.WALRUS) || (card.type === FACES.WALRUS)) {
       game.adventureApplies(this, player, card);
     }
+    return emptyPromise;
   }
 });
 
@@ -81,6 +96,7 @@ registerAdventure({
       game.adventureApplies(this, player, card);
       game.leftPlayer.addToHand(game.drawCard(game.leftPlayer));
     }
+    return emptyPromise;
   }
 });
 
@@ -97,6 +113,7 @@ registerAdventure({
     if (masqCard && previousTop && drawCard && masqCard.hasType(FACES.OCTOPUS) && drawCard.hasType(FACES.OCTOPUS) && !previousTop.hasType(FACES.OCTOPUS)) {
       game.adventureApplies(this, player, card);
     }
+    return emptyPromise;
   },
   addToGame: function(game) {
     game.revealMainDeck();
@@ -146,6 +163,7 @@ registerAdventure({
     if (!(card.type & previousTop.type) && (player.hand.length >= 7)) {
       game.adventureApplies(this, player, card);
     }
+    return emptyPromise;
   }
 });
 
@@ -186,12 +204,17 @@ registerAdventure({
   face: FACES.MANDRILL,
   playCard: function(card, masqCard, previousTop, pile, player, game) {
     if (masqCard.hasType(FACES.MANDRILL)) {
-      var discard = player.selectDiscard();
-      if (discard) {
-        game.adventureApplies(this, player, discard);
-        game.transferCard(discard, game.leftPlayer, player);
-      }
+      var discardPromise = Q.defer();
+      player.selectGiveaway(game.leftPlayer, game).then(function(discard) {
+        if (discard) {
+          game.adventureApplies(this, player, discard);
+          game.transferCard(discard, game.leftPlayer, player);
+        }
+        discardPromise.resolve();
+      }.bind(this));
+      return discardPromise.promise;
     }
+    return emptyPromise;
   }
 });
 
@@ -204,6 +227,7 @@ registerAdventure({
       game.adventureApplies(this, player, card);
       game.takeBackCard(previousTop, pile, game.rightPlayer);
     }
+    return emptyPromise;
   }
 });
 

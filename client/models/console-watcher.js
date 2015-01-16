@@ -1,6 +1,8 @@
 var Watcher = require('./watcher');
 
-var print = console.log;
+var print = function() {
+    return console.log(Array.prototype.slice.apply(arguments).join(' '));
+};
 
 module.exports = Watcher.extend({
     __name__: 'ConsoleWatcher',
@@ -13,9 +15,10 @@ module.exports = Watcher.extend({
     onGameStart: function() {
         print("Let the game begin!");
     },
-    onGameFinish: function (winner) {
-        if (winner) print(winner.name, "wins the game!");
-        else print("The game is a draw.");
+    onGameFinish: function (winners) {
+        if (!winners || winners.length === 0) print("The game is a draw.");
+        else if (winners.length > 1) print("Winners:", winners.map(function(winner) { return winner.name; })).join(", ");
+        else print(winners[0].name, "wins the game!");
     },
     onGameAbort: function () {
         print("The game is a draw.");

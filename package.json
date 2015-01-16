@@ -8,6 +8,7 @@
     "ampersand-model": "^4.0.3",
     "ampersand-router": "^1.0.1",
     "ampersand-state": "^4.4.4",
+    "q": "^1.1.2",
     "underscore": "^1.6.0"
   },
   "devDependencies": {},

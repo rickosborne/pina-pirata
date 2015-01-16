@@ -4,6 +4,7 @@ var Player = require('./player');
 var Adventure = require('./adventure');
 var CardDeck = require('./card-deck');
 var AdventureDeck = require('./adventure-deck');
+var _ = require('underscore');
 
 var EVENTS = {
   TURN_FINISH: 'turn:finish',
@@ -34,17 +35,20 @@ var Game = module.exports = AmpersandState.extend({
   __name__: 'Game',
   props: {
     round: ['number', false, -1],
-    currentPlayerNum: ['number', false, -1],
+    currentPlayerNum: ['number', false, 0],
     adventureCount: ['number', false, 2],
     playDirection: ['number', false, 1],
-    deckRevealed: ['number', false, 0]
+    deckRevealed: ['number', false, 0],
+    personalNames: ['object', false, function(){return {}}],
+    isPlaying: ['boolean', false, false],
+    winners: ['array', false, function(){return []}]
   },
   collections: {
     players: AmpersandCollection.extend({
       model: Player
     }),
     adventures: AmpersandCollection.extend({
-      __name__: 'Adventures',
+      __name__: 'AdventuresView',
       model: Adventure,
       toString: function() {
         return this.__name__ + '[' + this.length + ':' + this.map(function(adventure) {
@@ -131,7 +135,12 @@ var Game = module.exports = AmpersandState.extend({
     this.trigger(EVENTS.PLAYER_ADD, player, this);
   },
   setup: function() {
+    this.playDirection = 1;
     this.mainDeck.buildBasicDeck();
+    // players
+    this.players.each(function(player) {
+      player.hand.reset();
+    });
     // initial deal
     for(var i = 0; i < this.startingHandSize; i++) {
       this.players.each(function(player) {
@@ -147,6 +156,7 @@ var Game = module.exports = AmpersandState.extend({
     }
     // adventures
     this.adventures.reset();
+    this.adventureDeck.personalize(this.personalNames);
     for(var adventureN = 1; (adventureN <= this.adventureCount) && (this.adventureDeck.length > 0); adventureN++) {
       var adventure = this.adventureDeck.draw();
       this.adventures.add(adventure.attributes); // wtf is this hackery?
@@ -155,18 +165,30 @@ var Game = module.exports = AmpersandState.extend({
     }
   },
   startTurn: function() {
-    this.currentPlayer.on(EVENTS.TURN_FINISH, this.finishTurn, this);
+    //this.currentPlayer.on(EVENTS.TURN_FINISH, this.finishTurn, this);
+    //console.log('startTurn', this.currentPlayer.name);
     this.trigger(EVENTS.TURN_START, this.currentPlayer, this);
+    this.currentPlayer.turnStart(this.currentPlayer, this).then(this.finishTurn.bind(this));
   },
   finishTurn: function() {
-    this.currentPlayer.off(EVENTS.TURN_FINISH);
+    //this.currentPlayer.off(EVENTS.TURN_FINISH);
+    //console.log('finishTurn');
     this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
-    this.currentPlayerNum = this.nextPlayerNum;
-    this.startTurn();
+    var winners = this.players.filter(function(player) {
+      return player.hand.length === 0;
+    });
+    if (winners.length > 0) {
+      this.finishGame(winners);
+    } else {
+      this.currentPlayerNum = this.nextPlayerNum;
+      _.defer(this.startTurn.bind(this));
+    }
   },
-  finishGame: function() {
-    this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
-    this.trigger(EVENTS.GAME_FINISH, this.currentPlayer);
+  finishGame: function(winners) {
+    //this.trigger(EVENTS.TURN_FINISH, this.currentPlayer);
+    this.isPlaying = false;
+    this.winners = winners;
+    this.trigger(EVENTS.GAME_FINISH, winners);
     this.cleanUp();
   },
   abortGame: function() {
@@ -176,14 +198,17 @@ var Game = module.exports = AmpersandState.extend({
   },
   cleanUp: function() {
     this.players.each(function(player) {
-      player.off(null, null, this);
-    });
+      //player.off(null, null, this);
+      player.removeFromGame(this);
+    }, this);
   },
   startGame: function() {
     this.currentPlayerNum = 0;
-    this.players.each(function(player) {
-      player.on(EVENTS.GAME_FINISH, this.finishGame, this);
-    }, this);
+    //this.players.each(function(player) {
+    //  player.on(EVENTS.GAME_FINISH, this.finishGame, this);
+    //}, this);
+    this.isPlaying = true;
+    this.winners = [];
     this.trigger(EVENTS.GAME_START);
     this.startTurn();
   },
@@ -241,7 +266,8 @@ var Game = module.exports = AmpersandState.extend({
     this.piles.each(function(pile) {
       var topCard = pile.take();
       this.mainDeck.add(pile.models);
-      pile.reset([topCard]);
+      pile.remove(pile.models); // reset is causing view issues
+      pile.add(topCard);
     }, this);
     if (this.discardPile.length > 0) {
       this.mainDeck.add(this.discardPile.models);

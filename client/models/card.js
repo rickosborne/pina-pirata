@@ -1,20 +1,26 @@
 var AmpersandState = require('ampersand-state');
 var _ = require('underscore');
 
-var FACES = {
-  RABBIT:   0x0001,
-  PARROT:   0x0002,
-  MANDRILL: 0x0004,
-  OCTOPUS:  0x0008,
-  TIGER:    0x0010,
-  PENGUIN:  0x0020,
-  CROC:     0x0040,
-  RAT:      0x0080,
-  TURTLE:   0x0100,
-  WALRUS:   0x0200
-};
+var faceData = [
+  [ 'RABBIT',   0x0001, 'Rabbit' ],
+  [ 'PARROT',   0x0002, 'Parrot' ],
+  [ 'MANDRILL', 0x0004, 'Monkey' ],
+  [ 'OCTOPUS',  0x0008, 'Octopus' ],
+  [ 'TIGER',    0x0010, 'Tiger' ],
+  [ 'PENGUIN',  0x0020, 'Penguin' ],
+  [ 'CROC',     0x0040, 'Crocodile' ],
+  [ 'RAT',      0x0080, 'Rat' ],
+  [ 'TURTLE',   0x0100, 'Turtle' ],
+  [ 'WALRUS',   0x0200, 'Walrus' ]
+];
 
-// var FACE_STRINGS = _.invert(FACES);
+var FACES = {};
+var FACE_NAMES = {};
+_(faceData).each(function(data) {
+  FACES[data[0]] = data[1];
+  FACE_NAMES[data[0]] = data[2];
+});
+
 
 var Card = module.exports = AmpersandState.extend({
   props: {
@@ -26,7 +32,7 @@ var Card = module.exports = AmpersandState.extend({
       fn: function() {
         var result = [];
         _(FACES).each(function(typeCode, typeName) {
-          if (this.hasType(typeCode)) result.push(typeName);
+          if (this.hasType(typeCode)) result.push(typeName.toLowerCase());
         }, this);
         return result;
       }
@@ -52,3 +58,6 @@ var Card = module.exports = AmpersandState.extend({
 
 Card.prototype.FACES = FACES;
 Card.prototype.WILD = _(FACES).reduce(function(acc, val) { return acc + val; }, 0);
+Card.prototype.FACE_STRINGS = _.invert(FACES);
+Card.prototype.FACE_NAMES = FACE_NAMES;
+
